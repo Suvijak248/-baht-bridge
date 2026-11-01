@@ -115,3 +115,18 @@ function setupOrderForm() {
 
 setupOrderForm();
 renderCreateProducts();
+
+/** ค้นหาออเดอร์ใน Orders screen */
+function filterOrders(query) {
+  const q = query.toLowerCase().trim();
+  const cards = document.querySelectorAll('#orders-list .order');
+  let found = 0;
+  cards.forEach((card) => {
+    const text = (card.dataset.search || card.textContent).toLowerCase();
+    const show = !q || text.includes(q);
+    card.style.display = show ? '' : 'none';
+    if (show) found++;
+  });
+  const empty = document.getElementById('empty-orders');
+  if (empty) empty.style.display = found === 0 ? 'block' : 'none';
+}
