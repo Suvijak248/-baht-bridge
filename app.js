@@ -67,11 +67,23 @@ const countryInfo = {
   CNY: ['🇨🇳', 'จีน'], EUR: ['🇪🇺', 'ยุโรป'],
 };
 const productIcons = ['👟', '🧸', '👕', '🎧', '⌚'];
-let products = [
-  { name: 'Shoes', currency: 'USD', amount: 50, quantity: 1 },
-  { name: 'Figure', currency: 'JPY', amount: 5000, quantity: 1 },
-  { name: 'Shirt', currency: 'KRW', amount: 30000, quantity: 1 },
-];
+function loadProducts() {
+  try {
+    const s = localStorage.getItem('bb_products');
+    if (s) return JSON.parse(s);
+  } catch (_) {}
+  return [
+    { name: 'Shoes', currency: 'USD', amount: 50, quantity: 1 },
+    { name: 'Figure', currency: 'JPY', amount: 5000, quantity: 1 },
+    { name: 'Shirt', currency: 'KRW', amount: 30000, quantity: 1 },
+  ];
+}
+
+function saveProducts() {
+  try { localStorage.setItem('bb_products', JSON.stringify(products)); } catch (_) {}
+}
+
+let products = loadProducts();
 
 const money = (amount) => `฿ ${Math.round(amount).toLocaleString('th-TH')}`;
 const productTotal = (product) => product.amount * product.quantity * exchangeRates[product.currency];
@@ -79,6 +91,7 @@ const totalProducts = () => products.reduce((sum, product) => sum + productTotal
 
 function removeProduct(index) {
   products.splice(index, 1);
+  saveProducts();
   renderCreateProducts();
 }
 
@@ -181,6 +194,7 @@ function setupOrderForm() {
     const amount = Number(inputs[2].value);
     const quantity = Number(inputs[3].value);
     products.push({ name, currency: selects[1].value, amount, quantity });
+    saveProducts();
     inputs[1].value = '';
     inputs[2].value = '';
     inputs[3].value = '1';
