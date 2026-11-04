@@ -276,6 +276,8 @@ function setupOrderForm() {
     inputs[1].value = '';
     inputs[2].value = '';
     inputs[3].value = '1';
+    selects[0].value = 'USD';
+    selects[1].value = 'USD';
     renderCreateProducts();
   });
   create.querySelector('.sticky .primary').onclick = calculateOrder;
