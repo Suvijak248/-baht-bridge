@@ -25,6 +25,11 @@ const money = (amount) => `฿ ${Math.round(amount).toLocaleString('th-TH')}`;
 const productTotal = (product) => product.amount * product.quantity * exchangeRates[product.currency];
 const totalProducts = () => products.reduce((sum, product) => sum + productTotal(product), 0);
 
+function removeProduct(index) {
+  products.splice(index, 1);
+  renderCreateProducts();
+}
+
 function renderCreateProducts() {
   const create = document.getElementById('create');
   create.querySelectorAll('.mini-product').forEach((card) => card.remove());
@@ -33,7 +38,7 @@ function renderCreateProducts() {
     const [flag] = countryInfo[product.currency];
     const card = document.createElement('div');
     card.className = 'mini-product';
-    card.innerHTML = `<div class="row"><span class="product-title">${flag} ${product.name}</span><b>${product.amount.toLocaleString()} ${product.currency} × ${product.quantity}</b></div><div class="convert">อัตราแลกเปลี่ยน ${exchangeRates[product.currency].toLocaleString()} <b>→ ${money(productTotal(product))}</b></div>`;
+    card.innerHTML = `<div class="row"><span class="product-title">${flag} ${product.name}</span><b>${product.amount.toLocaleString()} ${product.currency} × ${product.quantity}</b><button onclick="removeProduct(${index})" style="background:#fff0f1;border:none;border-radius:8px;color:#df4c53;font-size:14px;cursor:pointer;padding:3px 8px;line-height:1" title="ลบสินค้านี้">✕</button></div><div class="convert">อัตราแลกเปลี่ยน ${exchangeRates[product.currency].toLocaleString()} <b>→ ${money(productTotal(product))}</b></div>`;
     addButton.insertAdjacentElement('afterend', card);
   });
   const values = create.querySelectorAll('.summary b');
