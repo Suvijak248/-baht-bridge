@@ -9,7 +9,59 @@ function show(id) {
   });
 }
 
-const exchangeRates = { USD: 33, JPY: 0.22, KRW: 0.025, CNY: 4.55, EUR: 36.2 };
+const FALLBACK_RATES = { USD: 33, JPY: 0.22, KRW: 0.025, CNY: 4.55, EUR: 36.2 };
+let exchangeRates = { ...FALLBACK_RATES };
+let ratesLastFetched = null;
+
+async function fetchExchangeRates() {
+  setApiStatus('loading');
+  try {
+    const cached = localStorage.getItem('bb_rates');
+    if (cached) {
+      const { ts, rates } = JSON.parse(cached);
+      if (Date.now() - ts < 10 * 60 * 1000) {
+        exchangeRates = rates;
+        ratesLastFetched = new Date(ts);
+        setApiStatus('ok');
+        return;
+      }
+    }
+    const res = await fetch('https://api.exchangerate-api.com/v4/latest/THB');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const newRates = {};
+    for (const cur of Object.keys(FALLBACK_RATES)) {
+      newRates[cur] = data.rates[cur] ? (1 / data.rates[cur]) : FALLBACK_RATES[cur];
+    }
+    exchangeRates = newRates;
+    ratesLastFetched = new Date();
+    localStorage.setItem('bb_rates', JSON.stringify({ ts: Date.now(), rates: newRates }));
+    setApiStatus('ok');
+  } catch (err) {
+    console.warn('Exchange rate API error, using fallback:', err);
+    exchangeRates = { ...FALLBACK_RATES };
+    setApiStatus('error');
+  }
+}
+
+function setApiStatus(state) {
+  const el = document.getElementById('api-ok');
+  if (!el) return;
+  const time = ratesLastFetched ? ratesLastFetched.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+  if (state === 'loading') {
+    el.className = 'api loading';
+    el.innerHTML = '<span class="spin"></span> กำลังดึงอัตราแลกเปลี่ยน...';
+  } else if (state === 'ok') {
+    el.className = 'api';
+    el.style.cssText = '';
+    el.textContent = `● อัตราแลกเปลี่ยนอัปเดตล่าสุด: ${time}`;
+  } else {
+    el.className = 'api';
+    el.style.background = '#fff5f5';
+    el.style.color = '#be3940';
+    el.textContent = '⚠ ใช้อัตราสำรอง (ไม่มีอินเทอร์เน็ต)';
+  }
+}
 const countryInfo = {
   USD: ['🇺🇸', 'สหรัฐอเมริกา'], JPY: ['🇯🇵', 'ญี่ปุ่น'], KRW: ['🇰🇷', 'เกาหลีใต้'],
   CNY: ['🇨🇳', 'จีน'], EUR: ['🇪🇺', 'ยุโรป'],
@@ -125,3 +177,5 @@ function setupOrderForm() {
 
 setupOrderForm();
 renderCreateProducts();
+
+fetchExchangeRates().then(() => renderCreateProducts());
