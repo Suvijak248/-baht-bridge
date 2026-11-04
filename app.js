@@ -223,13 +223,20 @@ function renderCustomer() {
   values[3].textContent = money(goods + 250);
 }
 
-function calculateOrder() {
+async function calculateOrder() {
+  const btn = document.querySelector('#create .sticky .primary');
+  if (btn) btn.disabled = true;
   show('loading');
-  window.setTimeout(() => {
+  try {
+    await fetchExchangeRates();
+  } catch (err) {
+    console.error('Error fetching rates:', err);
+  } finally {
     renderDetail();
     renderCustomer();
     show('detail');
-  }, 1200);
+    if (btn) btn.disabled = false;
+  }
 }
 
 function setupOrderForm() {
