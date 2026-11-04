@@ -2,6 +2,11 @@
 function show(id) {
   document.querySelectorAll('.screen').forEach((screen) => screen.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  // ซิงค์ nav active เบื้องต้น
+  document.querySelectorAll('.bottom .nav').forEach((nav) => {
+    const txt = nav.textContent.trim().toLowerCase();
+    nav.classList.toggle('on', txt.includes(id));
+  });
 }
 
 const exchangeRates = { USD: 33, JPY: 0.22, KRW: 0.025, CNY: 4.55, EUR: 36.2 };
