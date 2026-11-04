@@ -157,15 +157,29 @@ function setupOrderForm() {
   selects[0].addEventListener('change', () => { selects[1].value = selects[0].value; });
   selects[1].addEventListener('change', () => { selects[0].value = selects[1].value; });
 
+  function validateProductForm(inputs, selects) {
+    const name = inputs[1].value.trim();
+    const amount = Number(inputs[2].value);
+    const quantity = Number(inputs[3].value);
+    const errors = [];
+    if (!name) errors.push('• ชื่อสินค้า');
+    if (!amount || amount <= 0) errors.push('• ราคาสินค้า (ต้องมากกว่า 0)');
+    if (!quantity || quantity <= 0 || !Number.isInteger(quantity)) errors.push('• จำนวน (ต้องเป็นจำนวนเต็มมากกว่า 0)');
+    if (!selects[1].value) errors.push('• สกุลเงิน');
+    return errors;
+  }
+
   create.querySelector('.secondary').addEventListener('click', () => {
+    const inputs = create.querySelectorAll('input.input');
+    const errors = validateProductForm(inputs, selects);
+    if (errors.length) {
+      window.alert('กรุณากรอกข้อมูลให้ครบ:\n' + errors.join('\n'));
+      return;
+    }
     const inputs = create.querySelectorAll('input.input');
     const name = inputs[1].value.trim();
     const amount = Number(inputs[2].value);
     const quantity = Number(inputs[3].value);
-    if (!name || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
-      window.alert('กรุณากรอกชื่อสินค้า ราคา และจำนวนให้ถูกต้อง');
-      return;
-    }
     products.push({ name, currency: selects[1].value, amount, quantity });
     inputs[1].value = '';
     inputs[2].value = '';
