@@ -84,6 +84,77 @@ function saveProducts() {
 }
 
 let products = loadProducts();
+let savedOrders = loadOrders();
+
+function loadOrders() {
+  try {
+    const s = localStorage.getItem('bb_orders');
+    if (s) return JSON.parse(s);
+  } catch (_) {}
+  return [
+    { id: 'BR001', customer: 'คุณปิยะ', items: 3, total: 3750, status: 'pending', date: 'วันนี้' },
+    { id: 'BR002', customer: 'คุณนิดา', items: 2, total: 2190, status: 'done', date: 'เมื่อวาน' },
+  ];
+}
+
+function saveOrders() {
+  try { localStorage.setItem('bb_orders', JSON.stringify(savedOrders)); } catch (_) {}
+}
+
+function renderOrdersList() {
+  const list = document.getElementById('orders-list');
+  if (!list) return;
+  const emptyEl = document.getElementById('empty-orders');
+  list.querySelectorAll('.order[data-dynamic]').forEach((el) => el.remove());
+
+  savedOrders.slice().reverse().forEach((order) => {
+    const tagClass = order.status === 'done' ? 'tag green' : 'tag';
+    const tagText = order.status === 'done' ? 'ยืนยันแล้ว' : 'กำลังดำเนินการ';
+    const el = document.createElement('div');
+    el.className = 'order';
+    el.dataset.dynamic = '1';
+    el.dataset.search = `#${order.id.toLowerCase()} ${order.customer}`.toLowerCase();
+    el.innerHTML = `
+      <div class="order-head">
+        <strong>#${order.id} · ${order.customer}</strong>
+        <span class="${tagClass}">${tagText}</span>
+      </div>
+      <div class="order-meta">
+        ${order.items} สินค้า · ${order.date}
+        <span class="money" style="float:right">${money(order.total)}</span>
+      </div>`;
+    el.onclick = () => show('detail');
+    list.insertBefore(el, emptyEl);
+  });
+}
+
+function confirmOrder() {
+  const customer = document.querySelector('#create input.input').value.trim() || 'ลูกค้า';
+  const goods = totalProducts();
+  const newOrder = {
+    id: `BR${String(savedOrders.length + 1).padStart(3, '0')}`,
+    customer,
+    items: products.length,
+    total: Math.round(goods + 250),
+    status: 'done',
+    date: 'เมื่อกี้',
+  };
+  savedOrders.push(newOrder);
+  saveOrders();
+
+  const successScreen = document.getElementById('success');
+  if (successScreen) {
+    const rows = successScreen.querySelectorAll('.row strong');
+    if (rows[0]) rows[0].textContent = `#${newOrder.id}`;
+    if (rows[1]) rows[1].textContent = customer;
+    if (rows[2]) rows[2].textContent = `฿ ${newOrder.total.toLocaleString('th-TH')}`;
+  }
+
+  products = [];
+  saveProducts();
+  renderOrdersList();
+  show('success');
+}
 
 const money = (amount) => `฿ ${Math.round(amount).toLocaleString('th-TH')}`;
 const productTotal = (product) => product.amount * product.quantity * exchangeRates[product.currency];
@@ -207,3 +278,6 @@ setupOrderForm();
 renderCreateProducts();
 
 fetchExchangeRates().then(() => renderCreateProducts());
+renderOrdersList();
+const confirmBtn = document.querySelector('#customer .sticky .primary');
+if (confirmBtn) confirmBtn.onclick = confirmOrder;
