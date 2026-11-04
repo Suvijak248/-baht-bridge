@@ -4,3 +4,6 @@
 
 /* Action bars are part of the page flow, so they never cover order content. */
 .sticky{position:static;margin-top:16px;padding:0;background:transparent;z-index:auto}
+.del-btn{background:none;border:none;color:#df4c53;font-size:16px;cursor:pointer;padding:2px 8px;border-radius:8px;line-height:1}
+.del-btn:hover{background:#ffebee}
+.customer-badge{display:inline-flex;gap:6px;align-items:center;background:#eef6ff;color:var(--navy);padding:4px 10px;border-radius:12px;font-size:12px;margin-top:4px}
