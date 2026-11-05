@@ -4,6 +4,541 @@
 
 /* Action bars are part of the page flow, so they never cover order content. */
 .sticky{position:static;margin-top:16px;padding:0;background:transparent;z-index:auto}
-.del-btn{background:none;border:none;color:#df4c53;font-size:16px;cursor:pointer;padding:2px 8px;border-radius:8px;line-height:1}
-.del-btn:hover{background:#ffebee}
-.customer-badge{display:inline-flex;gap:6px;align-items:center;background:#eef6ff;color:var(--navy);padding:4px 10px;border-radius:12px;font-size:12px;margin-top:4px}
+\n
+
+/* ==========================================================================
+   Commit 1: Hover & Active Micro-Interactions
+   ========================================================================== */
+button, .primary, .secondary, .outline, .float-add, .nav, .back, .link, .order, .mini-product, .stat {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.primary:hover {
+  background: #1b74cb;
+  box-shadow: 0 10px 22px #2389ec55;
+  transform: translateY(-1px);
+}
+.primary:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 4px 10px #2389ec30;
+}
+
+.secondary:hover {
+  background: #d5eaff;
+  color: #166fc4;
+  transform: translateY(-1px);
+}
+.secondary:active {
+  transform: scale(0.98);
+  background: #c8e2fb;
+}
+
+.outline:hover {
+  background: #f4f8fd;
+  border-color: #a6c7ec;
+  color: var(--navy);
+  transform: translateY(-1px);
+}
+.outline:active {
+  transform: scale(0.98);
+  background: #eaf2fb;
+}
+
+.float-add:hover {
+  box-shadow: 0 12px 26px #2389ec60;
+  transform: translateY(-2px);
+}
+.float-add:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.order {
+  cursor: pointer;
+}
+.order:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 45, 92, 0.08);
+  border-color: #d0e0f2;
+}
+.order:active {
+  transform: scale(0.99);
+}
+
+.mini-product {
+  transition: all 0.2s ease;
+}
+.mini-product:hover {
+  border-color: #b8d7f7;
+  background: #f2f7ff;
+}
+
+.stat {
+  transition: all 0.2s ease;
+}
+.stat:hover {
+  border-color: #dbe5f0;
+  box-shadow: 0 6px 16px rgba(16, 45, 92, 0.05);
+}
+
+.nav:hover {
+  color: var(--blue);
+}
+.nav:active {
+  transform: scale(0.92);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+.back:hover {
+  background: #e4ecf7;
+  color: var(--blue);
+  transform: translateX(-2px);
+}
+.back:active {
+  transform: translateX(-4px) scale(0.92);
+}
+
+.link:hover {
+  color: #176dc4;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+button:disabled, .primary:disabled, .secondary:disabled, .outline:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+
+/* ==========================================================================
+   Commit 2: Toast Notification Styles
+   ========================================================================== */
+.toast-container {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 40px);
+  max-width: 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  background: var(--navy);
+  box-shadow: 0 10px 25px rgba(16, 45, 92, 0.22);
+  animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.toast.toast-success {
+  background: linear-gradient(135deg, #0d7f4f, #16a36a);
+  border: 1px solid #34c489;
+}
+
+.toast.toast-error {
+  background: linear-gradient(135deg, #c43239, #df4c53);
+  border: 1px solid #f27278;
+}
+
+.toast.toast-info {
+  background: linear-gradient(135deg, #1664b4, #2389ec);
+  border: 1px solid #62aaf7;
+}
+
+.toast-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.toast.toast-out {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+  pointer-events: none;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
+/* ==========================================================================
+   Commit 3: Shimmer Skeleton Loading Effect
+   ========================================================================== */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #e5edf5;
+  border-radius: 8px;
+}
+
+.skeleton::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.6) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 1.6s infinite ease-in-out;
+  content: "";
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-text {
+  height: 14px;
+  margin: 6px 0;
+  border-radius: 6px;
+}
+.skeleton-text.short {
+  width: 40%;
+}
+.skeleton-text.medium {
+  width: 70%;
+}
+.skeleton-text.long {
+  width: 90%;
+}
+
+.skeleton-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.skeleton-card {
+  height: 74px;
+  border-radius: 17px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+}
+
+
+/* ==========================================================================
+   Commit 4: Filter Tabs Navigation
+   ========================================================================== */
+.filter-tabs {
+  display: flex;
+  gap: 6px;
+  background: #e8eef6;
+  padding: 4px;
+  border-radius: 14px;
+  margin: 12px 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-tab {
+  flex: 1;
+  text-align: center;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.filter-tab:hover {
+  color: var(--ink);
+}
+
+.filter-tab.active {
+  background: #ffffff;
+  color: var(--navy);
+  font-weight: 700;
+  box-shadow: 0 3px 8px rgba(16, 45, 92, 0.08);
+}
+
+.filter-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: #dce7f3;
+  color: var(--navy);
+  transition: all 0.2s ease;
+}
+
+.filter-tab.active .filter-badge {
+  background: var(--sky);
+  color: var(--blue);
+}
+
+
+/* ==========================================================================
+   Commit 5: Dynamic Status Badge System
+   ========================================================================== */
+.badge, .tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 20px;
+  line-height: 1;
+  letter-spacing: -0.2px;
+}
+
+.badge::before, .tag::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Pending / กำลังดำเนินการ */
+.tag, .tag.pending, .badge.pending {
+  background: #fff7e6;
+  color: #a36c00;
+  border: 1px solid #ffe3a3;
+}
+.tag::before, .tag.pending::before, .badge.pending::before {
+  background: #ffaa00;
+}
+
+/* Success / ยืนยันแล้ว / สำเร็จ */
+.tag.green, .tag.confirmed, .tag.success, .badge.success {
+  background: #eafaf1;
+  color: #0d8251;
+  border: 1px solid #b7eccf;
+}
+.tag.green::before, .tag.confirmed::before, .tag.success::before, .badge.success::before {
+  background: #16a36a;
+}
+
+/* Info / จัดส่งแล้ว / ระหว่างทาง */
+.tag.blue, .tag.info, .badge.info {
+  background: #edf6ff;
+  color: #176fc8;
+  border: 1px solid #beddfb;
+}
+.tag.blue::before, .tag.info::before, .badge.info::before {
+  background: #2389ec;
+}
+
+/* Danger / ยกเลิก */
+.tag.danger, .tag.cancelled, .badge.danger {
+  background: #fdf1f1;
+  color: #c7363d;
+  border: 1px solid #facbce;
+}
+.tag.danger::before, .tag.cancelled::before, .badge.danger::before {
+  background: #df4c53;
+}
+
+/* Live Pulse Animation for Active Status */
+.tag.live::before, .badge.live::before {
+  animation: badge-pulse 1.6s infinite ease-in-out;
+}
+
+@keyframes badge-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 1;
+    box-shadow: 0 0 6px currentColor;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+}
+
+
+/* ==========================================================================
+   Commit 6: Mobile Viewport & Sticky Action Bar Optimization
+   ========================================================================== */
+@supports (height: 100dvh) {
+  .phone {
+    height: min(844px, calc(100dvh - 56px));
+  }
+}
+
+@media (max-width: 480px) {
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .shell {
+    padding: 0;
+    height: 100%;
+    display: block;
+  }
+
+  .phone {
+    width: 100%;
+    height: 100dvh;
+    min-height: 100%;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .screen {
+    padding: 18px 16px max(110px, calc(90px + env(safe-area-inset-bottom, 20px)));
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  .bottom {
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.94);
+  }
+
+  .float-add {
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    right: 16px;
+  }
+
+  .input, select.input {
+    font-size: 16px; /* Prevents unwanted iOS auto-zoom on focus */
+  }
+
+  .sticky {
+    position: sticky;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    margin-top: 20px;
+    padding: 10px 0;
+    z-index: 50;
+  }
+}
+
+
+/* ==========================================================================
+   Commit 7: Empty State Styles
+   ========================================================================== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 42px 20px;
+  background: #ffffff;
+  border: 1px dashed #d5e2f0;
+  border-radius: 20px;
+  margin: 16px 0;
+  min-height: 220px;
+}
+
+.empty-icon {
+  width: 68px;
+  height: 68px;
+  border-radius: 24px;
+  background: #edf5fe;
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+  font-size: 32px;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 18px rgba(35, 137, 236, 0.12);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.empty-state:hover .empty-icon {
+  transform: scale(1.08) rotate(-4deg);
+}
+
+.empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0 0 6px;
+  letter-spacing: -0.3px;
+}
+
+.empty-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0 0 16px;
+  max-width: 250px;
+}
+
+.empty-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 12px;
+  background: var(--sky);
+  color: var(--blue);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.empty-action:hover {
+  background: #d9edff;
+  transform: translateY(-1px);
+}
