@@ -9,6 +9,7 @@ if (!fs.existsSync(wwwDir)) {
 const filesToCopy = [
   'index.html',
   'styles.css',
+  'pricing.js',
   'app.js',
   'manifest.json',
   'icon.svg',
