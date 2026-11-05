@@ -119,3 +119,80 @@ button:disabled, .primary:disabled, .secondary:disabled, .outline:disabled {
   transform: none !important;
   box-shadow: none !important;
 }
+
+
+/* ==========================================================================
+   Commit 2: Toast Notification Styles
+   ========================================================================== */
+.toast-container {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 40px);
+  max-width: 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  background: var(--navy);
+  box-shadow: 0 10px 25px rgba(16, 45, 92, 0.22);
+  animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.toast.toast-success {
+  background: linear-gradient(135deg, #0d7f4f, #16a36a);
+  border: 1px solid #34c489;
+}
+
+.toast.toast-error {
+  background: linear-gradient(135deg, #c43239, #df4c53);
+  border: 1px solid #f27278;
+}
+
+.toast.toast-info {
+  background: linear-gradient(135deg, #1664b4, #2389ec);
+  border: 1px solid #62aaf7;
+}
+
+.toast-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.toast.toast-out {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+  pointer-events: none;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
