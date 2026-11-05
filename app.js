@@ -1,8 +1,17 @@
 /**
- * BahtBridge — Core Application Logic
+ * BahtBridge — Core Application Logic (app.js)
  * Role: Person 3 (Logic & Data Layer)
- * Compliant with DATA_MODEL.md and HTML_CONTRACT.md
+ * Compliant with DATA_MODEL.md, HTML_CONTRACT.md, and pricing.js
  */
+
+// ─── Toast / Notification Helper ──────────────────────────────────────────────
+function notify(message, type = 'info') {
+  if (typeof window !== 'undefined' && window.UI && typeof window.UI.showToast === 'function') {
+    window.UI.showToast(message, type);
+  } else {
+    alert(message);
+  }
+}
 
 // ─── XSS Prevention ──────────────────────────────────────────────────────────
 function esc(str) {
@@ -15,7 +24,7 @@ function esc(str) {
     .replace(/'/g, '&#39;');
 }
 
-// ─── Thai Date Formatter ──────────────────────────────────────────────────────
+// ─── Thai Date / Time Formatter ───────────────────────────────────────────────
 function formatThaiDate(isoString) {
   if (!isoString) return '';
   const d = new Date(isoString);
@@ -28,6 +37,14 @@ function formatThaiDate(isoString) {
   const month = thaiMonths[d.getMonth()];
   const year = d.getFullYear() + 543;
   return `${day} ${month} ${year}`;
+}
+
+function formatThaiDateTime(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return String(isoString);
+  const time = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  return `${formatThaiDate(isoString)} ${time} น.`;
 }
 
 // ─── Navigation & Screen Switching ───────────────────────────────────────────
@@ -59,10 +76,10 @@ function show(id) {
 }
 
 // ─── Exchange Rates & Live API Integration ────────────────────────────────────
-const FALLBACK_RATES = { USD: 33, JPY: 0.22, KRW: 0.025, CNY: 4.55, EUR: 36.2 };
+const FALLBACK_RATES = { USD: 33.0, JPY: 0.22, KRW: 0.025, CNY: 4.55, EUR: 36.2 };
 let exchangeRates = { ...FALLBACK_RATES };
 let ratesLastFetched = null;
-let isUsingFallbackRates = false;
+let currentRateSource = 'fallback'; // 'api' | 'fallback' | 'manual'
 
 async function fetchExchangeRates() {
   setApiStatus('loading');
@@ -73,7 +90,7 @@ async function fetchExchangeRates() {
       if (Date.now() - ts < 10 * 60 * 1000) {
         exchangeRates = rates;
         ratesLastFetched = new Date(ts);
-        isUsingFallbackRates = false;
+        currentRateSource = 'api';
         setApiStatus('ok');
         return;
       }
@@ -88,13 +105,13 @@ async function fetchExchangeRates() {
     }
     exchangeRates = newRates;
     ratesLastFetched = new Date();
-    isUsingFallbackRates = false;
+    currentRateSource = 'api';
     localStorage.setItem('bb_rates_cache', JSON.stringify({ ts: Date.now(), rates: newRates }));
     setApiStatus('ok');
   } catch (err) {
     console.warn('Exchange rate API error, using fallback:', err);
     exchangeRates = { ...FALLBACK_RATES };
-    isUsingFallbackRates = true;
+    currentRateSource = 'fallback';
     setApiStatus('error');
   }
 }
@@ -135,57 +152,23 @@ const productIcons = ['👟', '🧸', '👕', '🎧', '⌚', '🎒', '🕶️', 
 const ORDERS_STORAGE_KEY = 'bahtbridge_orders_data';
 const SETTINGS_STORAGE_KEY = 'bahtbridge_settings';
 
-const defaultOrders = [
-  {
-    id: '#BR001',
-    customerName: 'คุณปิยะ วัฒนะ',
-    customerPhone: '081-234-5678',
-    customerAddress: 'LINE: @piya',
-    createdAt: '2026-09-24T08:00:00.000Z',
-    dateFormatted: '24 ก.ย. 2569',
-    date: '24 ก.ย. 2569',
-    status: 'กำลังดำเนินการ',
-    orderStatus: 'pending',
-    paymentStatus: 'unpaid',
-    items: [
-      { name: 'Shoes', currency: 'USD', amount: 50, originalPrice: 50, quantity: 1, exchangeRate: 33 },
-      { name: 'Figure', currency: 'JPY', amount: 5000, originalPrice: 5000, quantity: 1, exchangeRate: 0.22 },
-      { name: 'Shirt', currency: 'KRW', amount: 30000, originalPrice: 30000, quantity: 1, exchangeRate: 0.025 },
-    ],
-    shipping: 150,
-    shippingFee: 150,
-    fee: 100,
-    serviceFee: 100,
-  },
-  {
-    id: '#BR002',
-    customerName: 'คุณนิดา เกียรติสกุล',
-    customerPhone: '089-876-5432',
-    customerAddress: 'IG: @nida_shop',
-    createdAt: '2026-09-23T10:30:00.000Z',
-    dateFormatted: '23 ก.ย. 2569',
-    date: '23 ก.ย. 2569',
-    status: 'ยืนยันแล้ว',
-    orderStatus: 'completed',
-    paymentStatus: 'paid',
-    items: [
-      { name: 'Headphone', currency: 'USD', amount: 60, originalPrice: 60, quantity: 1, exchangeRate: 33 },
-    ],
-    shipping: 110,
-    shippingFee: 110,
-    fee: 100,
-    serviceFee: 100,
-  },
-];
-
-function getStoredSettings() {
+function getSettings() {
+  const defaults = {
+    nextOrderNo: 3,
+    defaultShipping: 150,
+    serviceFeeType: 'fixed', // 'fixed' | 'percent'
+    serviceFeeValue: 100,
+    rateMarkupPercent: 0,
+  };
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      return Object.assign(defaults, JSON.parse(raw));
+    }
   } catch (e) {
     console.error('Error reading settings', e);
   }
-  return { nextOrderNo: 3 };
+  return defaults;
 }
 
 function saveSettings(settings) {
@@ -197,7 +180,7 @@ function saveSettings(settings) {
 }
 
 function getNextOrderId(orders) {
-  const settings = getStoredSettings();
+  const settings = getSettings();
   let maxNum = 0;
   (orders || []).forEach((o) => {
     const m = o.id && String(o.id).match(/\d+/);
@@ -217,7 +200,68 @@ function getNextOrderId(orders) {
   return `#BR${String(nextNo).padStart(3, '0')}`;
 }
 
-// Migration for existing/legacy orders
+const defaultOrders = [
+  {
+    id: '#BR001',
+    customerName: 'คุณปิยะ วัฒนะ',
+    customerPhone: '081-234-5678',
+    customerAddress: 'LINE: @piya',
+    createdAt: '2026-09-24T08:00:00.000Z',
+    dateFormatted: '24 ก.ย. 2569',
+    date: '24 ก.ย. 2569',
+    status: 'กำลังดำเนินการ',
+    orderStatus: 'pending',
+    paymentStatus: 'unpaid',
+    ratesSnapshot: { USD: 33.0, JPY: 0.22, KRW: 0.025, CNY: 4.55, EUR: 36.2 },
+    ratesAt: '2026-09-24T08:00:00.000Z',
+    rateSource: 'fallback',
+    shipping: 150,
+    shippingFee: 150,
+    fee: 100,
+    serviceFee: 100,
+    feeType: 'fixed',
+    feeValue: 100,
+    goodsThb: 3500,
+    goodsTotal: 3500,
+    totalThb: 3750,
+    grandTotal: 3750,
+    items: [
+      { name: 'Shoes', currency: 'USD', amount: 50, originalPrice: 50, quantity: 1, exchangeRate: 33.0 },
+      { name: 'Figure', currency: 'JPY', amount: 5000, originalPrice: 5000, quantity: 1, exchangeRate: 0.22 },
+      { name: 'Shirt', currency: 'KRW', amount: 30000, originalPrice: 30000, quantity: 1, exchangeRate: 0.025 },
+    ],
+  },
+  {
+    id: '#BR002',
+    customerName: 'คุณนิดา เกียรติสกุล',
+    customerPhone: '089-876-5432',
+    customerAddress: 'IG: @nida_shop',
+    createdAt: '2026-09-23T10:30:00.000Z',
+    dateFormatted: '23 ก.ย. 2569',
+    date: '23 ก.ย. 2569',
+    status: 'ยืนยันแล้ว',
+    orderStatus: 'completed',
+    paymentStatus: 'paid',
+    ratesSnapshot: { USD: 33.0, JPY: 0.22, KRW: 0.025, CNY: 4.55, EUR: 36.2 },
+    ratesAt: '2026-09-23T10:30:00.000Z',
+    rateSource: 'fallback',
+    shipping: 110,
+    shippingFee: 110,
+    fee: 100,
+    serviceFee: 100,
+    feeType: 'fixed',
+    feeValue: 100,
+    goodsThb: 1980,
+    goodsTotal: 1980,
+    totalThb: 2190,
+    grandTotal: 2190,
+    items: [
+      { name: 'Headphone', currency: 'USD', amount: 60, originalPrice: 60, quantity: 1, exchangeRate: 33.0 },
+    ],
+  },
+];
+
+// Migration for existing/legacy orders without snapshots
 function migrateOrders(orders) {
   let hasChange = false;
   const nowIso = new Date().toISOString();
@@ -237,6 +281,23 @@ function migrateOrders(orders) {
       o.date = o.dateFormatted;
       hasChange = true;
     }
+
+    // Ensure locked rate snapshot exists
+    if (!o.ratesSnapshot) {
+      const snap = { ...FALLBACK_RATES };
+      if (Array.isArray(o.items)) {
+        o.items.forEach((item) => {
+          if (item.currency && item.exchangeRate) {
+            snap[item.currency] = Number(item.exchangeRate);
+          }
+        });
+      }
+      o.ratesSnapshot = snap;
+      o.ratesAt = o.createdAt || nowIso;
+      o.rateSource = 'fallback';
+      hasChange = true;
+    }
+
     if (Array.isArray(o.items)) {
       o.items.forEach((item) => {
         if (item.amount === undefined && item.originalPrice !== undefined) {
@@ -248,6 +309,16 @@ function migrateOrders(orders) {
           hasChange = true;
         }
       });
+    }
+
+    // Ensure goodsThb and totalThb are calculated from ratesSnapshot
+    if (typeof Pricing !== 'undefined' && (o.goodsThb === undefined || o.totalThb === undefined)) {
+      const totals = Pricing.calcOrderTotals(o);
+      o.goodsThb = o.goodsTotal !== undefined ? o.goodsTotal : totals.goodsThb;
+      o.totalThb = o.grandTotal !== undefined ? o.grandTotal : (o.total !== undefined ? o.total : totals.totalThb);
+      o.goodsTotal = o.goodsThb;
+      o.grandTotal = o.totalThb;
+      hasChange = true;
     }
   });
 
@@ -280,17 +351,37 @@ function saveOrdersToStorage(orders) {
   }
 }
 
-// ─── Draft Products in Create Form (Starts Empty) ─────────────────────────────
+// ─── Draft Products in Create Form ────────────────────────────────────────────
 let draftProducts = [];
 let activeViewingOrder = null;
 
-const money = (amount) => `฿ ${Math.round(amount).toLocaleString('th-TH')}`;
-const productTotal = (p) => {
-  const price = p.amount !== undefined ? p.amount : (p.originalPrice || 0);
-  const rate = p.exchangeRate !== undefined ? p.exchangeRate : (exchangeRates[p.currency] || 1);
-  return price * p.quantity * rate;
-};
-const calcTotalGoods = (items) => (items || []).reduce((sum, item) => sum + productTotal(item), 0);
+const money = (amount) => `฿ ${Number(amount || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+// Live Order Summary Calculation in Create Screen
+function renderCreateSummary() {
+  const settings = getSettings();
+  const shippingInput = document.getElementById('order-shipping');
+  const feeInput = document.getElementById('order-fee');
+
+  const shipping = shippingInput ? Number(shippingInput.value) || 0 : (settings.defaultShipping || 0);
+  const fee = feeInput ? Number(feeInput.value) || 0 : (settings.serviceFeeValue || 0);
+
+  const snapshot = Pricing.lockRates(exchangeRates, settings.rateMarkupPercent || 0);
+  const draftOrder = {
+    items: draftProducts,
+    ratesSnapshot: snapshot,
+    shipping,
+    feeType: 'fixed',
+    feeValue: fee,
+  };
+
+  const totals = Pricing.calcOrderTotals(draftOrder);
+
+  const goodsEl = document.getElementById('summary-goods');
+  const totalEl = document.getElementById('summary-total');
+  if (goodsEl) goodsEl.textContent = money(totals.goodsThb);
+  if (totalEl) totalEl.textContent = money(totals.totalThb);
+}
 
 // Render Draft Products in Create Screen
 function renderCreateProducts() {
@@ -298,9 +389,14 @@ function renderCreateProducts() {
   if (!container) return;
   container.innerHTML = '';
 
+  const settings = getSettings();
+  const snapshot = Pricing.lockRates(exchangeRates, settings.rateMarkupPercent || 0);
+
   draftProducts.forEach((product, index) => {
     const [flag] = countryInfo[product.currency] || ['🌐', ''];
-    const rate = exchangeRates[product.currency] || 1;
+    const rate = snapshot[product.currency] || 1;
+    const subtotal = Pricing.round2(product.amount * product.quantity * rate);
+
     const card = document.createElement('div');
     card.className = 'mini-product';
     card.innerHTML = `
@@ -312,17 +408,13 @@ function renderCreateProducts() {
         </div>
       </div>
       <div class="convert">
-        อัตราแลกเปลี่ยน ${rate} <b>→ ${money(productTotal(product))}</b>
+        อัตราแลกเปลี่ยน ${rate} <b>→ ${money(subtotal)}</b>
       </div>
     `;
     container.appendChild(card);
   });
 
-  const goods = calcTotalGoods(draftProducts);
-  const goodsEl = document.getElementById('summary-goods');
-  const totalEl = document.getElementById('summary-total');
-  if (goodsEl) goodsEl.textContent = money(goods);
-  if (totalEl) totalEl.textContent = money(goods > 0 ? goods + 250 : 0);
+  renderCreateSummary();
 }
 
 function deleteDraftProduct(index) {
@@ -330,8 +422,20 @@ function deleteDraftProduct(index) {
   renderCreateProducts();
 }
 
-// ─── Setup Form (Direct Select, No outerHTML) ─────────────────────────────────
+// ─── Setup Form (Direct Select, Dynamic Fees) ─────────────────────────────────
 function setupOrderForm() {
+  const settings = getSettings();
+
+  // Initialize dynamic shipping and fee inputs from settings
+  const shippingInput = document.getElementById('order-shipping');
+  const feeInput = document.getElementById('order-fee');
+  if (shippingInput && !shippingInput.value) {
+    shippingInput.value = settings.defaultShipping ?? 150;
+  }
+  if (feeInput && !feeInput.value) {
+    feeInput.value = settings.serviceFeeValue ?? 100;
+  }
+
   const countrySel = document.getElementById('country-select');
   const currencySel = document.getElementById('currency-select');
 
@@ -362,7 +466,7 @@ function setupOrderForm() {
       if (!quantity || quantity <= 0 || !Number.isInteger(quantity)) errors.push('• จำนวนสินค้า (ต้องเป็นจำนวนเต็มอย่างน้อย 1)');
 
       if (errors.length > 0) {
-        alert('กรุณากรอกข้อมูลสินค้าให้ถูกต้อง:\n' + errors.join('\n'));
+        notify('กรุณากรอกข้อมูลสินค้าให้ถูกต้อง:\n' + errors.join('\n'), 'warning');
         return;
       }
 
@@ -372,7 +476,6 @@ function setupOrderForm() {
         amount,
         originalPrice: amount,
         quantity,
-        exchangeRate: exchangeRates[currency] || 1,
       });
 
       nameInput.value = '';
@@ -383,20 +486,20 @@ function setupOrderForm() {
   }
 }
 
-// ─── Calculate & Prepare Order Detail ─────────────────────────────────────────
+// ─── Calculate & Prepare Order Detail (Lock Rates) ────────────────────────────
 async function calculateOrder() {
   const custName = (document.getElementById('cust-name')?.value || '').trim();
   const custPhone = (document.getElementById('cust-phone')?.value || '').trim();
   const custAddress = (document.getElementById('cust-address')?.value || '').trim();
 
   if (!custName) {
-    alert('กรุณากรอกชื่อลูกค้าก่อนคำนวณราคา');
+    notify('กรุณากรอกชื่อลูกค้าก่อนคำนวณราคา', 'warning');
     document.getElementById('cust-name')?.focus();
     return;
   }
 
   if (draftProducts.length === 0) {
-    alert('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ');
+    notify('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ', 'warning');
     return;
   }
 
@@ -413,38 +516,48 @@ async function calculateOrder() {
   } catch (err) {
     console.error('Error fetching rates:', err);
   } finally {
-    // Update rates in draft items to locked rate
-    draftProducts.forEach((p) => {
-      p.exchangeRate = exchangeRates[p.currency] || 1;
-    });
+    const settings = getSettings();
+    const ratesSnapshot = Pricing.lockRates(exchangeRates, settings.rateMarkupPercent || 0);
 
-    const goods = calcTotalGoods(draftProducts);
-    const shipping = 150;
-    const fee = 100;
-    const total = goods + shipping + fee;
-    const nowIso = new Date().toISOString();
+    const shippingInput = document.getElementById('order-shipping');
+    const feeInput = document.getElementById('order-fee');
+    const shipping = shippingInput ? Number(shippingInput.value) || 0 : (settings.defaultShipping || 150);
+    const fee = feeInput ? Number(feeInput.value) || 0 : (settings.serviceFeeValue || 100);
 
-    activeViewingOrder = {
+    const draftOrder = {
       id: 'DRAFT',
       customerName: custName,
       customerPhone: custPhone || '-',
       customerAddress: custAddress || '-',
-      createdAt: nowIso,
-      dateFormatted: formatThaiDate(nowIso),
+      createdAt: new Date().toISOString(),
+      dateFormatted: formatThaiDate(new Date().toISOString()),
       date: 'วันนี้',
       status: 'กำลังดำเนินการ',
       orderStatus: 'pending',
       paymentStatus: 'unpaid',
-      items: [...draftProducts],
+      ratesSnapshot,
+      ratesAt: new Date().toISOString(),
+      rateSource: currentRateSource, // 'api' | 'fallback'
       shipping,
       shippingFee: shipping,
       fee,
       serviceFee: fee,
-      goodsTotal: goods,
-      grandTotal: total,
-      total: total,
+      feeType: 'fixed',
+      feeValue: fee,
+      items: draftProducts.map((p) => ({
+        ...p,
+        exchangeRate: ratesSnapshot[p.currency] || 1,
+      })),
       isDraft: true,
     };
+
+    const totals = Pricing.calcOrderTotals(draftOrder);
+    draftOrder.goodsThb = totals.goodsThb;
+    draftOrder.totalThb = totals.totalThb;
+    draftOrder.goodsTotal = totals.goodsThb;
+    draftOrder.grandTotal = totals.totalThb;
+
+    activeViewingOrder = draftOrder;
 
     populateDetailScreen(activeViewingOrder);
     populateCustomerScreen(activeViewingOrder);
@@ -457,8 +570,34 @@ async function calculateOrder() {
   }
 }
 
+// ─── Allow Merchant to Manually Adjust Exchange Rate ─────────────────────────
+function updateManualRate(currency, newRateVal) {
+  if (!activeViewingOrder) return;
+  const newRate = Number(newRateVal);
+  if (!newRate || newRate <= 0) {
+    notify('กรุณาระบุอัตราแลกเปลี่ยนที่มากกว่า 0', 'warning');
+    return;
+  }
+
+  activeViewingOrder.ratesSnapshot[currency] = newRate;
+  activeViewingOrder.rateSource = 'manual';
+
+  // Recalculate totals
+  const totals = Pricing.calcOrderTotals(activeViewingOrder);
+  activeViewingOrder.goodsThb = totals.goodsThb;
+  activeViewingOrder.totalThb = totals.totalThb;
+  activeViewingOrder.goodsTotal = totals.goodsThb;
+  activeViewingOrder.grandTotal = totals.totalThb;
+
+  populateDetailScreen(activeViewingOrder);
+  populateCustomerScreen(activeViewingOrder);
+  notify(`อัปเดตอัตราแลกเปลี่ยน ${currency} = ${newRate} (Manual) สำเร็จ`, 'success');
+}
+
 // ─── Populate Detail Screen ───────────────────────────────────────────────────
 function populateDetailScreen(order) {
+  const totals = Pricing.calcOrderTotals(order);
+
   const title = document.getElementById('detail-order-title');
   if (title) title.textContent = order.isDraft ? 'สรุปคำนวณออเดอร์ใหม่' : `รายละเอียดออเดอร์ ${order.id}`;
 
@@ -474,43 +613,74 @@ function populateDetailScreen(order) {
   if (metaEl) {
     const displayDate = order.dateFormatted || order.date || formatThaiDate(order.createdAt);
     const statusText = order.status || (order.orderStatus === 'completed' ? 'ยืนยันแล้ว' : 'กำลังดำเนินการ');
-    metaEl.innerHTML = `${esc(displayDate)} · <span style="color:${statusText === 'ยืนยันแล้ว' ? '#16a36a' : '#ffb020'}">● ${esc(statusText)}</span>`;
+    const lockedTime = order.ratesAt ? formatThaiDateTime(order.ratesAt) : displayDate;
+    const rateSourceTag = order.rateSource === 'manual'
+      ? '<span style="color:#2389ec">● เรทระบุเอง</span>'
+      : (order.rateSource === 'api' ? '<span style="color:#16a36a">● เรทสด</span>' : '<span style="color:#df4c53">● เรทสำรอง</span>');
+
+    metaEl.innerHTML = `${esc(displayDate)} · <span style="color:${statusText === 'ยืนยันแล้ว' ? '#16a36a' : '#ffb020'}">● ${esc(statusText)}</span><br><small style="color:#8ba3c7">ล็อกเรทเมื่อ: ${esc(lockedTime)} (${rateSourceTag})</small>`;
   }
 
-  // Fallback Warning Banner
+  // Fallback / Manual Warning Banner with inline editor
   const fallbackWarnEl = document.getElementById('detail-fallback-warning');
   if (fallbackWarnEl) {
-    fallbackWarnEl.style.display = isUsingFallbackRates ? 'block' : 'none';
+    if (order.rateSource === 'fallback' || order.rateSource === 'manual') {
+      fallbackWarnEl.style.display = 'block';
+      const currencies = [...new Set(order.items.map((i) => i.currency || 'USD'))];
+      const inputsHtml = currencies
+        .map(
+          (c) => `
+          <label style="font-size:12px;display:inline-flex;align-items:center;gap:4px;margin-right:10px">
+            <b>${esc(c)}:</b>
+            <input type="number" step="0.0001" value="${order.ratesSnapshot?.[c] ?? FALLBACK_RATES[c] ?? 1}"
+              style="width:85px;height:28px;padding:2px 6px;border-radius:6px;border:1px solid #d0d7de"
+              onchange="updateManualRate('${esc(c)}', this.value)" />
+          </label>
+        `
+        )
+        .join('');
+
+      fallbackWarnEl.innerHTML = `
+        <div style="font-weight:600;margin-bottom:6px">
+          ${order.rateSource === 'manual' ? '✏️ กำลังใช้อัตราแลกเปลี่ยนที่ระบุเอง (Manual)' : '⚠️ ใช้อัตราแลกเปลี่ยนสำรอง (ออฟไลน์) กรุณาตรวจสอบหรือแก้เรท:'}
+        </div>
+        <div style="margin-top:6px">${inputsHtml}</div>
+      `;
+    } else {
+      fallbackWarnEl.style.display = 'none';
+    }
   }
 
+  // Render items using lines from Pricing.calcOrderTotals (guaranteed sum match!)
   const listEl = document.getElementById('detail-items-list');
   if (listEl) {
     listEl.innerHTML = '';
-    order.items.forEach((p) => {
-      const [flag] = countryInfo[p.currency] || ['🌐'];
-      const rate = p.exchangeRate !== undefined ? p.exchangeRate : (exchangeRates[p.currency] || 1);
-      const itemPrice = p.amount !== undefined ? p.amount : (p.originalPrice || 0);
+    totals.lines.forEach((line) => {
+      const [flag] = countryInfo[line.currency] || ['🌐'];
       const item = document.createElement('div');
       item.className = 'item';
       item.innerHTML = `
         <div class="flag">${flag}</div>
         <div class="item-info">
-          <strong>${esc(p.name)}</strong>
-          <small>${itemPrice.toLocaleString()} ${esc(p.currency)} × ${p.quantity} · Rate ${rate}</small>
+          <strong>${esc(line.name)}</strong>
+          <small>${line.amount.toLocaleString()} ${esc(line.currency)} × ${line.quantity} · Rate ${line.rate}</small>
         </div>
-        <div class="price">→ ${money(productTotal(p))}<small>แปลงแล้ว</small></div>
+        <div class="price">→ ${money(line.subtotalThb)}<small>แปลงแล้ว</small></div>
       `;
       listEl.appendChild(item);
     });
   }
 
-  const goods = calcTotalGoods(order.items);
-  const shipping = order.shipping || order.shippingFee || 150;
-  const fee = order.fee || order.serviceFee || 100;
+  // Populate dynamic summary
   const goodsEl = document.getElementById('detail-summary-goods');
+  const shipEl = document.getElementById('detail-summary-shipping');
+  const feeEl = document.getElementById('detail-summary-fee');
   const totalEl = document.getElementById('detail-summary-total');
-  if (goodsEl) goodsEl.textContent = money(goods);
-  if (totalEl) totalEl.textContent = money(goods + shipping + fee);
+
+  if (goodsEl) goodsEl.textContent = money(totals.goodsThb);
+  if (shipEl) shipEl.textContent = money(totals.shipping);
+  if (feeEl) feeEl.textContent = money(totals.fee);
+  if (totalEl) totalEl.textContent = money(totals.totalThb);
 
   const confirmBtn = document.getElementById('btn-confirm-order');
   if (confirmBtn) {
@@ -520,10 +690,7 @@ function populateDetailScreen(order) {
 
 // ─── Populate Customer View Screen ────────────────────────────────────────────
 function populateCustomerScreen(order) {
-  const goods = calcTotalGoods(order.items);
-  const shipping = order.shipping || order.shippingFee || 150;
-  const fee = order.fee || order.serviceFee || 100;
-  const total = goods + shipping + fee;
+  const totals = Pricing.calcOrderTotals(order);
 
   const idEl = document.getElementById('cust-view-order-id');
   if (idEl) idEl.textContent = order.isDraft ? 'ออเดอร์ใหม่ของคุณ' : `Order ${order.id}`;
@@ -535,35 +702,39 @@ function populateCustomerScreen(order) {
   if (contactEl) contactEl.textContent = `📞 ${order.customerPhone}`;
 
   const dueEl = document.getElementById('cust-view-due');
-  if (dueEl) dueEl.textContent = `${Math.round(total).toLocaleString('th-TH')} ฿`;
+  if (dueEl) dueEl.textContent = money(totals.totalThb);
 
   const countEl = document.getElementById('cust-view-count');
-  if (countEl) countEl.textContent = `${order.items.length} รายการ`;
+  if (countEl) countEl.textContent = `${totals.lines.length} รายการ`;
 
   const listEl = document.getElementById('customer-items-list');
   if (listEl) {
     listEl.innerHTML = '';
-    order.items.forEach((p, idx) => {
-      const [flag, country] = countryInfo[p.currency] || ['🌐', 'ต่างประเทศ'];
-      const itemPrice = p.amount !== undefined ? p.amount : (p.originalPrice || 0);
+    totals.lines.forEach((line, idx) => {
+      const [flag, country] = countryInfo[line.currency] || ['🌐', 'ต่างประเทศ'];
       const item = document.createElement('div');
       item.className = 'item';
       item.innerHTML = `
         <div class="photo">${productIcons[idx % productIcons.length]}</div>
         <div class="item-info">
-          <strong>${esc(p.name)}</strong>
-          <small>${flag} ${country} · ${itemPrice.toLocaleString()} ${esc(p.currency)} (×${p.quantity})</small>
+          <strong>${esc(line.name)}</strong>
+          <small>${flag} ${country} · ${line.amount.toLocaleString()} ${esc(line.currency)} (×${line.quantity})</small>
         </div>
-        <div class="price">${money(productTotal(p))}</div>
+        <div class="price">${money(line.subtotalThb)}</div>
       `;
       listEl.appendChild(item);
     });
   }
 
   const sumGoods = document.getElementById('cust-summary-goods');
+  const sumShip = document.getElementById('cust-summary-shipping');
+  const sumFee = document.getElementById('cust-summary-fee');
   const sumTotal = document.getElementById('cust-summary-total');
-  if (sumGoods) sumGoods.textContent = money(goods);
-  if (sumTotal) sumTotal.textContent = money(total);
+
+  if (sumGoods) sumGoods.textContent = money(totals.goodsThb);
+  if (sumShip) sumShip.textContent = money(totals.shipping);
+  if (sumFee) sumFee.textContent = money(totals.fee);
+  if (sumTotal) sumTotal.textContent = money(totals.totalThb);
 }
 
 // ─── Confirm Order & Persist ──────────────────────────────────────────────────
@@ -577,6 +748,9 @@ function confirmCurrentOrder() {
     const nowIso = new Date().toISOString();
     const thaiDate = formatThaiDate(nowIso);
 
+    // Compute final totals via Pricing
+    const totals = Pricing.calcOrderTotals(activeViewingOrder);
+
     const newOrder = {
       ...activeViewingOrder,
       id: newId,
@@ -586,8 +760,17 @@ function confirmCurrentOrder() {
       status: 'กำลังดำเนินการ',
       orderStatus: 'pending',
       paymentStatus: 'unpaid',
+      goodsThb: totals.goodsThb,
+      totalThb: totals.totalThb,
+      goodsTotal: totals.goodsThb,
+      grandTotal: totals.totalThb,
+      shipping: totals.shipping,
+      shippingFee: totals.shipping,
+      fee: totals.fee,
+      serviceFee: totals.fee,
       isDraft: false,
     };
+
     orders.unshift(newOrder);
     saveOrdersToStorage(orders);
     activeViewingOrder = newOrder;
@@ -600,7 +783,7 @@ function confirmCurrentOrder() {
     if (idEl) idEl.textContent = newOrder.id;
     if (nameEl) nameEl.textContent = newOrder.customerName;
     if (phoneEl) phoneEl.textContent = newOrder.customerPhone;
-    if (totalEl) totalEl.textContent = money(calcTotalGoods(newOrder.items) + 250);
+    if (totalEl) totalEl.textContent = money(newOrder.totalThb);
 
     // Reset draft form
     draftProducts = [];
@@ -627,7 +810,7 @@ function confirmCurrentOrder() {
   show('success');
 }
 
-// View an Order from History
+// View an Order from History (Calculates strictly from order.ratesSnapshot!)
 function viewOrderDetail(orderId) {
   const orders = getStoredOrders();
   const found = orders.find((o) => o.id === orderId);
@@ -645,9 +828,8 @@ function renderDashboard() {
   const totalCount = orders.length;
   const pendingCount = orders.filter((o) => o.status === 'กำลังดำเนินการ' || o.orderStatus === 'pending').length;
   const totalSales = orders.reduce((sum, o) => {
-    const shipping = o.shipping || o.shippingFee || 150;
-    const fee = o.fee || o.serviceFee || 100;
-    return sum + calcTotalGoods(o.items) + shipping + fee;
+    const totals = Pricing.calcOrderTotals(o);
+    return sum + totals.totalThb;
   }, 0);
 
   const totalEl = document.getElementById('stat-total-orders');
@@ -664,9 +846,7 @@ function renderDashboard() {
 
   const recents = orders.slice(0, 3);
   recents.forEach((order) => {
-    const shipping = order.shipping || order.shippingFee || 150;
-    const fee = order.fee || order.serviceFee || 100;
-    const total = calcTotalGoods(order.items) + shipping + fee;
+    const totals = Pricing.calcOrderTotals(order);
     const displayDate = order.dateFormatted || order.date || formatThaiDate(order.createdAt);
     const statusText = order.status || (order.orderStatus === 'completed' ? 'ยืนยันแล้ว' : 'กำลังดำเนินการ');
 
@@ -680,7 +860,7 @@ function renderDashboard() {
       </div>
       <div class="order-meta">
         ${order.items.length} สินค้า · ${esc(displayDate)}
-        <span class="money" style="float:right">${money(total)}</span>
+        <span class="money" style="float:right">${money(totals.totalThb)}</span>
       </div>
     `;
     listEl.appendChild(card);
@@ -697,9 +877,7 @@ function renderOrdersList() {
   cards.forEach((c) => c.remove());
 
   orders.forEach((order) => {
-    const shipping = order.shipping || order.shippingFee || 150;
-    const fee = order.fee || order.serviceFee || 100;
-    const total = calcTotalGoods(order.items) + shipping + fee;
+    const totals = Pricing.calcOrderTotals(order);
     const statusText = order.status || (order.orderStatus === 'completed' ? 'ยืนยันแล้ว' : 'กำลังดำเนินการ');
 
     const card = document.createElement('div');
@@ -713,7 +891,7 @@ function renderOrdersList() {
       </div>
       <div class="order-meta">
         ${order.items.length} สินค้า · ${esc(order.customerPhone || '-')}
-        <span class="money" style="float:right">${money(total)}</span>
+        <span class="money" style="float:right">${money(totals.totalThb)}</span>
       </div>
     `;
     const emptyEl = document.getElementById('empty-orders');
@@ -736,9 +914,8 @@ function renderProfile() {
   const totalOrders = orders.length;
   const confirmedOrders = orders.filter((o) => o.status === 'ยืนยันแล้ว' || o.orderStatus === 'completed').length;
   const totalSales = orders.reduce((sum, o) => {
-    const shipping = o.shipping || o.shippingFee || 150;
-    const fee = o.fee || o.serviceFee || 100;
-    return sum + calcTotalGoods(o.items) + shipping + fee;
+    const totals = Pricing.calcOrderTotals(o);
+    return sum + totals.totalThb;
   }, 0);
 
   const totalEl = document.getElementById('profile-total-orders');
@@ -778,19 +955,17 @@ function filterOrders(query) {
 function shareOrderSummary() {
   if (!activeViewingOrder) return;
   const o = activeViewingOrder;
-  const shipping = o.shipping || o.shippingFee || 150;
-  const fee = o.fee || o.serviceFee || 100;
-  const total = calcTotalGoods(o.items) + shipping + fee;
-  const text = `🛍️ สรุปออเดอร์ ${o.id || ''}\nลูกค้า: ${o.customerName}\nเบอร์โทร: ${o.customerPhone}\nยอดชำระ: ${money(total)}\n(BahtBridge)`;
+  const totals = Pricing.calcOrderTotals(o);
+  const text = `🛍️ สรุปออเดอร์ ${o.id || ''}\nลูกค้า: ${o.customerName}\nเบอร์โทร: ${o.customerPhone}\nยอดชำระ: ${money(totals.totalThb)}\n(BahtBridge)`;
 
   if (navigator.share) {
     navigator.share({ title: 'BahtBridge Order', text }).catch(() => {});
   } else if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(() => {
-      alert('คัดลอกสรุปออเดอร์ไปยัง Clipboard แล้ว!');
+      notify('คัดลอกสรุปออเดอร์ไปยัง Clipboard แล้ว!', 'success');
     });
   } else {
-    alert(text);
+    notify(text, 'info');
   }
 }
 
@@ -825,7 +1000,7 @@ function importOrdersData(event) {
     try {
       const data = JSON.parse(e.target.result);
       if (!data || !Array.isArray(data.orders)) {
-        alert('รูปแบบไฟล์ไม่ถูกต้อง: ต้องเป็นไฟล์สำรองข้อมูลของ BahtBridge (JSON)');
+        notify('รูปแบบไฟล์ไม่ถูกต้อง: ต้องเป็นไฟล์สำรองข้อมูลของ BahtBridge (JSON)', 'error');
         return;
       }
       if (confirm(`พบข้อมูลออเดอร์ ${data.orders.length} รายการ คุณต้องการนำเข้าข้อมูลนี้ทับข้อมูลปัจจุบันหรือไม่?`)) {
@@ -833,17 +1008,17 @@ function importOrdersData(event) {
         renderDashboard();
         renderOrdersList();
         renderProfile();
-        alert(`นำเข้าข้อมูลสำเร็จ! โหลดออเดอร์แล้ว ${data.orders.length} รายการ`);
+        notify(`นำเข้าข้อมูลสำเร็จ! โหลดออเดอร์แล้ว ${data.orders.length} รายการ`, 'success');
       }
     } catch (err) {
-      alert('เกิดข้อผิดพลาดในการอ่านไฟล์สำรอง: ' + err.message);
+      notify('เกิดข้อผิดพลาดในการอ่านไฟล์สำรอง: ' + err.message, 'error');
     }
   };
   reader.readAsText(file);
   event.target.value = '';
 }
 
-// ─── Initialize Application (Only Once in DOMContentLoaded) ───────────────────
+// ─── Initialize Application ───────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   setupOrderForm();
   renderCreateProducts();
