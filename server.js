@@ -12,6 +12,7 @@ const types = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
+  '.apk': 'application/vnd.android.package-archive',
 };
 
 http.createServer((request, response) => {
