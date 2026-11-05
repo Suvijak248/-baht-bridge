@@ -582,6 +582,55 @@ function shareOrderSummary() {
   }
 }
 
+// Backup / Export Orders Data to JSON file
+function exportOrdersData() {
+  const orders = getStoredOrders();
+  const backup = {
+    version: '1.0',
+    exportedAt: new Date().toISOString(),
+    appName: 'BahtBridge',
+    ordersCount: orders.length,
+    orders: orders,
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `bahtbridge-backup-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Restore / Import Orders Data from JSON file
+function importOrdersData(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data || !Array.isArray(data.orders)) {
+        alert('รูปแบบไฟล์ไม่ถูกต้อง: ต้องเป็นไฟล์สำรองข้อมูลของ BahtBridge (JSON)');
+        return;
+      }
+      if (confirm(`พบข้อมูลออเดอร์ ${data.orders.length} รายการ คุณต้องการนำเข้าข้อมูลนี้ทับข้อมูลปัจจุบันหรือไม่?`)) {
+        saveOrdersToStorage(data.orders);
+        renderDashboard();
+        renderOrdersList();
+        alert(`นำเข้าข้อมูลสำเร็จ! โหลดออเดอร์แล้ว ${data.orders.length} รายการ`);
+      }
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการอ่านไฟล์สำรอง: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
   setupOrderForm();
