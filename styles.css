@@ -322,3 +322,89 @@ button:disabled, .primary:disabled, .secondary:disabled, .outline:disabled {
   background: var(--sky);
   color: var(--blue);
 }
+
+
+/* ==========================================================================
+   Commit 5: Dynamic Status Badge System
+   ========================================================================== */
+.badge, .tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 20px;
+  line-height: 1;
+  letter-spacing: -0.2px;
+}
+
+.badge::before, .tag::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Pending / กำลังดำเนินการ */
+.tag, .tag.pending, .badge.pending {
+  background: #fff7e6;
+  color: #a36c00;
+  border: 1px solid #ffe3a3;
+}
+.tag::before, .tag.pending::before, .badge.pending::before {
+  background: #ffaa00;
+}
+
+/* Success / ยืนยันแล้ว / สำเร็จ */
+.tag.green, .tag.confirmed, .tag.success, .badge.success {
+  background: #eafaf1;
+  color: #0d8251;
+  border: 1px solid #b7eccf;
+}
+.tag.green::before, .tag.confirmed::before, .tag.success::before, .badge.success::before {
+  background: #16a36a;
+}
+
+/* Info / จัดส่งแล้ว / ระหว่างทาง */
+.tag.blue, .tag.info, .badge.info {
+  background: #edf6ff;
+  color: #176fc8;
+  border: 1px solid #beddfb;
+}
+.tag.blue::before, .tag.info::before, .badge.info::before {
+  background: #2389ec;
+}
+
+/* Danger / ยกเลิก */
+.tag.danger, .tag.cancelled, .badge.danger {
+  background: #fdf1f1;
+  color: #c7363d;
+  border: 1px solid #facbce;
+}
+.tag.danger::before, .tag.cancelled::before, .badge.danger::before {
+  background: #df4c53;
+}
+
+/* Live Pulse Animation for Active Status */
+.tag.live::before, .badge.live::before {
+  animation: badge-pulse 1.6s infinite ease-in-out;
+}
+
+@keyframes badge-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 1;
+    box-shadow: 0 0 6px currentColor;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+}
