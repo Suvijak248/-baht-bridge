@@ -2,8 +2,15 @@
 <html lang="th">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BahtBridge — Prototype</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>BahtBridge — Mobile App</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <meta name="theme-color" content="#102d5c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BahtBridge" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -25,4 +32,11 @@
   <section class="screen" id="profile"><div class="screen-body"><div class="top"><div class="brand"><i>฿</i>BahtBridge</div><span></span></div><div style="text-align:center;padding:16px 0 24px"><div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#102d5c,#2389ec);color:white;display:grid;place-items:center;font-size:28px;font-weight:700;margin:0 auto 12px">M</div><div style="font-size:18px;font-weight:700;color:var(--navy)">Merchant Shop</div><div class="muted" style="margin-top:4px">สมาชิกตั้งแต่ ก.ย. 2569</div></div><div class="form-card" style="margin-bottom:14px"><div class="section-title" style="margin-top:0">ข้อมูลร้านค้า</div><div class="field"><label>ชื่อร้าน</label><div class="input" style="height:auto;padding:11px;line-height:1.4">Merchant Shop</div></div><div class="field"><label>อีเมล</label><div class="input" style="height:auto;padding:11px">merchant@example.com</div></div><div class="field"><label>เบอร์โทร</label><div class="input" style="height:auto;padding:11px">081-234-5678</div></div></div><div class="form-card" style="margin-bottom:14px"><div class="section-title" style="margin-top:0">สถิติร้านค้า</div><div class="stats"><div class="stat"><span class="muted">ออเดอร์ทั้งหมด</span><b>24</b></div><div class="stat"><span class="muted">ยืนยันแล้ว</span><b>16</b></div><div class="stat wide"><span class="muted">ยอดขายสะสม</span><b>฿ 248,300</b></div></div></div><button class="outline" style="margin-bottom:10px">✏️ แก้ไขข้อมูล</button><button class="outline" style="color:var(--red,#df4c53);border-color:#f5c0c2">🚪 ออกจากระบบ</button></div><nav class="bottom"><div class="nav" onclick="show('dashboard')"><span>⌂</span>Dashboard</div><div class="nav" onclick="show('orders')"><span>▤</span>Orders</div><div class="nav on"><span>♙</span>Profile</div></nav></section>
 
   <section class="screen" id="success"><div class="screen-body"><div class="center-state"><div class="state-icon" style="background:#e5f7ef;font-size:40px">✓</div><h2 style="color:var(--green,#16a36a)">บันทึกออเดอร์สำเร็จ!</h2><p>บันทึกข้อมูลลูกค้าและออเดอร์เรียบร้อยแล้ว<br>สามารถดูย้อนหลังในหน้ารายการออเดอร์ได้ทันที</p><div style="background:#fff;border-radius:16px;border:1px solid var(--line);padding:16px;margin-bottom:20px;text-align:left"><div class="row" style="margin-bottom:8px"><span class="muted">เลขออเดอร์</span><strong id="success-order-id">#BR001</strong></div><div class="row" style="margin-bottom:8px"><span class="muted">ลูกค้า</span><strong id="success-customer-name">คุณปิยะ วัฒนะ</strong></div><div class="row" style="margin-bottom:8px"><span class="muted">เบอร์โทร</span><strong id="success-customer-phone">081-234-5678</strong></div><div class="row"><span class="muted">ยอดรวม</span><strong id="success-order-total" style="color:var(--navy)">฿ 3,750</strong></div></div><button class="primary" style="margin-bottom:10px" onclick="show('dashboard')">กลับหน้าหลัก (Dashboard)</button><button class="outline" onclick="show('orders')">ดูรายการออเดอร์ทั้งหมด</button></div></div></section>
-</div></main><script src="app.js"></script></body></html>
+</div></main><script src="app.js"></script><script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(console.error);
+    });
+  }
+</script>
+</body></html>
