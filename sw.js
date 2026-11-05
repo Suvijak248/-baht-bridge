@@ -1,4 +1,5 @@
-const CACHE_NAME = 'bahtbridge-cache-v1';
+/*PRECACHE*/
+const CACHE_NAME = 'bahtbridge-dev';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -7,6 +8,7 @@ const ASSETS_TO_CACHE = [
   '/manifest.json',
   '/icon.svg',
 ];
+/*END*/
 
 // Install Event
 self.addEventListener('install', (event) => {
@@ -57,4 +59,3 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
-
