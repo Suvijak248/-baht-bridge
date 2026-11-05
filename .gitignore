@@ -2,6 +2,10 @@
 node_modules/
 package-lock.json.bak
 
+# Secrets & Configs
+.env
+config.js
+
 # Build outputs
 www/
 dist/
@@ -18,8 +22,8 @@ android/.idea/
 android/*.iml
 android/app/*.iml
 
-# Logs & temp
+# System & logs
 *.log
-.temp/
 .DS_Store
 Thumbs.db
+.temp/
